@@ -31,10 +31,8 @@ include(FetchContent)
 set(ENET_VERSION v1.3.18)
 FetchContent_Declare(
     enet
-    GIT_REPOSITORY https://github.com/lsalzman/enet.git
-    GIT_TAG        ${ENET_VERSION}
-#    URL https://github.com/lsalzman/enet/archive/refs/tags/${ENET_VERSION}.zip
-#    FIND_PACKAGE_ARGS ${ENET_VERSION}
+    GIT_REPOSITORY "https://github.com/lsalzman/enet.git"
+    GIT_TAG        "${ENET_VERSION}"
 )
 set(BUILD_EXAMPLES OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(enet)
@@ -44,9 +42,9 @@ FetchContent_MakeAvailable(enet)
 set(CLIENT_PROJECT_NAME "client_${PROJECT_NAME}")
 
 add_executable(${CLIENT_PROJECT_NAME} client.cpp)
-target_link_libraries(${CLIENT_PROJECT_NAME} enet)
+target_link_libraries(${CLIENT_PROJECT_NAME} PUBLIC enet)
 
 set(SERVER_PROJECT_NAME "server_${PROJECT_NAME}")
 
 add_executable(${SERVER_PROJECT_NAME} server.cpp)
-target_link_libraries(${SERVER_PROJECT_NAME} enet)
+target_link_libraries(${SERVER_PROJECT_NAME} PUBLIC enet)
