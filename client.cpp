@@ -2,7 +2,7 @@
 #include <enet/enet.h>
 
 
-#define CLIENT_VERSION "0.1.0"
+#define CLIENT_VERSION "0.1.1"
 
 
 int main(int argc, char ** argv) {
