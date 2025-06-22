@@ -2,7 +2,7 @@
 #include <enet/enet.h>
 
 
-#define SERVER_VERSION "0.1.0"
+#define SERVER_VERSION "0.1.1"
 
 
 int main (int argc, char ** argv) {
@@ -23,6 +23,7 @@ int main (int argc, char ** argv) {
   /* enet_address_set_host (& address, "x.x.x.x"); */
   address.host = ENET_HOST_ANY; // This allows
   /* Bind the server to port 7777. */
+  // TODO try to get port from args
   address.port = 7777;
 
   server = enet_host_create(&address	/* the address to bind the server host to */,
@@ -38,18 +39,19 @@ int main (int argc, char ** argv) {
 
   printf("Server started and listening port %i\n", address.port);
 
-  while(true) {
+  while (true) {
     ENetEvent event;
     /* Wait up to 1000 milliseconds for an event. */
     while (enet_host_service (server, & event, 1000) > 0) {
       switch (event.type) {
         case ENET_EVENT_TYPE_CONNECT:
-          printf ("A new client connected from %x:%u.\n",
+          printf("A new client connected from %x:%u.\n",
                   event.peer -> address.host,
                   event.peer -> address.port);
           break;
+          // TODO get server name from args and send it in response when client connected
         case ENET_EVENT_TYPE_RECEIVE:
-          printf ("A packet of length %u containing %s was received from %s on channel %u.\n",
+          printf("A packet of length %u containing %s was received from %s on channel %u.\n",
                   event.packet -> dataLength,
                   event.packet -> data,
                   event.peer -> data,
@@ -58,7 +60,7 @@ int main (int argc, char ** argv) {
           enet_packet_destroy (event.packet);
           break;
         case ENET_EVENT_TYPE_DISCONNECT:
-          printf ("%s disconnected.\n", event.peer -> data);
+          printf("%s disconnected.\n", event.peer -> data);
           /* Reset the peer's client information. */
           event.peer -> data = NULL;
       }
