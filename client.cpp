@@ -1,12 +1,18 @@
 #include <iostream>
 #include <enet/enet.h>
 
+
+#define CLIENT_VERSION "0.1.0"
+
+
 int main(int argc, char ** argv) {
   if (enet_initialize() != 0) {
     fprintf(stderr, "An error occured while initializing ENet!\n");
     return EXIT_FAILURE;
   }
   atexit(enet_deinitialize);
+
+  printf("Starting client (version %s)\n", CLIENT_VERSION);
 
   ENetHost* client;
   client = enet_host_create(NULL	/* the address to bind the server host to */,
