@@ -1,8 +1,9 @@
 #include <stdio.h>
+#include <string>
 #include "enet/enet.h"
 
 
-#define SERVER_VERSION "0.1.1"
+#define SERVER_VERSION "0.1.2"
 
 
 int main (int argc, char ** argv) {
@@ -13,6 +14,7 @@ int main (int argc, char ** argv) {
   atexit(enet_deinitialize);
 
   printf("Starting server (version %s)\n", SERVER_VERSION);
+  // TODO check versions compatable while clients connecting to server
 
   ENetEvent event;
   ENetAddress address;
@@ -39,30 +41,40 @@ int main (int argc, char ** argv) {
 
   printf("Server started and listening port %i\n", address.port);
 
+  float guessedNumber = 23.4f;
   while (true) {
     ENetEvent event;
+    ENetPacket* responsePacket;
     /* Wait up to 1000 milliseconds for an event. */
-    while (enet_host_service (server, & event, 1000) > 0) {
+    while (enet_host_service(server, &event, 1000) > 0) {
       switch (event.type) {
         case ENET_EVENT_TYPE_CONNECT:
           printf("A new client connected from %x:%u.\n",
-                  event.peer -> address.host,
-                  event.peer -> address.port);
+                 event.peer -> address.host,
+                 event.peer -> address.port);
           break;
           // TODO get server name from args and send it in response when client connected
         case ENET_EVENT_TYPE_RECEIVE:
-          printf("A packet of length %u containing %s was received from %s on channel %u.\n",
-                  event.packet -> dataLength,
-                  event.packet -> data,
-                  event.peer -> data,
-                  event.channelID);
+          printf("A packet of length %u containing '%s' was received from %s on channel %u.\n",
+                 event.packet -> dataLength,
+                 event.packet -> data,
+                 event.peer -> data,
+                 event.channelID);
+          // TODO store number of guesses and deviation summ for each user
+          // store it in map using sockets as keys: "event.peer->address.host : event.peer->address.port"
+          // TODO count average deviation for current user using event.packet
           /* Clean up the packet now that we're done using it. */
-          enet_packet_destroy (event.packet);
+          enet_packet_destroy(event.packet);
+          responsePacket = enet_packet_create(std::to_string(guessedNumber).c_str(),
+                                              std::to_string(guessedNumber).size() + 1,
+                                              ENET_PACKET_FLAG_RELIABLE);
+          enet_peer_send(event.peer, 0, responsePacket);
           break;
         case ENET_EVENT_TYPE_DISCONNECT:
           printf("%s disconnected.\n", event.peer -> data);
           /* Reset the peer's client information. */
           event.peer -> data = NULL;
+          break;
       }
     }
   }

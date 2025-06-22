@@ -1,8 +1,9 @@
 #include <iostream>
+#include <cstring>
 #include "enet/enet.h"
 
 
-#define CLIENT_VERSION "0.1.1"
+#define CLIENT_VERSION "0.1.2"
 
 
 int main(int argc, char ** argv) {
@@ -29,6 +30,8 @@ int main(int argc, char ** argv) {
   ENetEvent event;
   ENetPeer* peer;
 
+  const char* username = "some body once told me";
+  //std::string username = "some body once told me";
   // TODO try to get address and port from args (or from console input)
   enet_address_set_host(&address, "127.0.0.1");
   address.port = 7777;
@@ -49,16 +52,37 @@ int main(int argc, char ** argv) {
 
   // [...Game Loop...]
 
-  while (enet_host_service(client, &event, 1000) > 0) {
-    switch (event.type) {
-      case ENET_EVENT_TYPE_RECEIVE:
-        printf("A packet of length %u containing %s was received from %x:%u on channel %u.\n",
-               event.packet -> dataLength,
-               event.packet -> data,
-               event.peer -> address.host,
-               event.peer -> address.port,
-               event.channelID);
-        break;
+  /* Create a reliable packet of size 7 containing "packet\0" */
+  ENetPacket* packet = enet_packet_create(username,
+                                          std::strlen(username) + 1,
+                                          ENET_PACKET_FLAG_RELIABLE);
+  /* Send the packet to the peer over channel id 0. */
+  enet_peer_send(peer, 0, packet);
+
+  std::string currentGuess = "";
+  ENetPacket* currentGuessPacket;
+  while (true) {
+    std::cin >> currentGuess;
+    if (currentGuess == "exit") {
+      break;
+    }
+    currentGuessPacket = enet_packet_create(currentGuess.c_str(),
+                                            currentGuess.size() + 1,
+                                            ENET_PACKET_FLAG_RELIABLE);
+    enet_peer_send(peer, 0, currentGuessPacket);
+
+    if (enet_host_service(client, &event, 1000) > 0) {
+      switch (event.type) {
+        case ENET_EVENT_TYPE_RECEIVE:
+          printf("Guessed number was: %s.\n", event.packet -> data);
+          /* Clean up the packet now that we're done using it. */
+          enet_packet_destroy(event.packet);
+          break;
+      }
+    } else {
+      printf("connection lost ...\n");
+      // TODO try to reconnect one time
+      break;
     }
   }
 
