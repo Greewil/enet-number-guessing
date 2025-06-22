@@ -1,0 +1,30 @@
+name: Check new version is greater than main version
+
+on:
+  workflow_call:
+    inputs:
+      VUH_VERSION: { required: true, type: string }
+
+jobs:
+
+  validate-version:
+    name: Check new version is greater than main version
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module: ['CLIENT', 'SERVER']
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download vuh
+        run: |
+          curl https://raw.githubusercontent.com/Greewil/version-update-helper/${{ inputs.VUH_VERSION }}/vuh.sh -O -J -L
+          chmod +x vuh.sh
+      - name: Compare versions
+        run: |
+          ./vuh.sh sv -pm=${{ matrix.module }} --check-git-diff || exit 1
+          suggested_version="$(./vuh.sh sv -pm=${{ matrix.module }} --check-git-diff -q)" || exit 1
+          current_version="$(./vuh.sh lv -pm=${{ matrix.module }} -q)" || exit 1
+          [ "$current_version" = "$suggested_version" ] || exit 1

@@ -1,8 +1,8 @@
 #include <iostream>
-#include <enet/enet.h>
+#include "enet/enet.h"
 
 
-#define CLIENT_VERSION "0.1.0"
+#define CLIENT_VERSION "0.1.1"
 
 
 int main(int argc, char ** argv) {
@@ -29,6 +29,7 @@ int main(int argc, char ** argv) {
   ENetEvent event;
   ENetPeer* peer;
 
+  // TODO try to get address and port from args (or from console input)
   enet_address_set_host(&address, "127.0.0.1");
   address.port = 7777;
 

@@ -1,0 +1,33 @@
+name: Quality Assurance
+
+on:
+  workflow_call:
+
+jobs:
+
+  quality-assurance:
+    name: Quality Assurance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up clang14, cppcheck, cmake
+        run: |
+          sudo apt-get install -y clang-14 cppcheck
+          sudo snap install cmake --classic
+      - name: Chack all tools installed properly
+        run: |
+          clang-14 --version
+          cppcheck --version
+          cmake --version
+      - name: Run cppcheck
+        run: cppcheck client.cpp server.cpp || exit 1
+      - name: Prepare build configuration with cmake
+        run: |
+          cmake -S . -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=MinSizeRel -B build || exit 1
+      - name: Try to build apps with cmake
+        run: |
+          cmake --build build || exit 1
+#      yes tests will be here ... maybe somehow someday)
+#      - name: Tests with ctest
+#        run: ctest ...
