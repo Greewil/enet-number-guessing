@@ -37,14 +37,17 @@ FetchContent_Declare(
 set(BUILD_EXAMPLES OFF CACHE INTERNAL "")
 FetchContent_MakeAvailable(enet)
 
-
+# idk why but sometimes it wont work include(FetchContent) or FetchContent_MakeAvailable(enet) won't work)) but sometimes ok
+# to be sure that all OK I added this line:
+include_directories(${CMAKE_SOURCE_DIR}/build/_deps/enet-src/include)
 
 set(CLIENT_PROJECT_NAME "client_${PROJECT_NAME}")
 
 add_executable(${CLIENT_PROJECT_NAME} client.cpp)
-target_link_libraries(${CLIENT_PROJECT_NAME} PUBLIC enet)
+target_link_libraries(${CLIENT_PROJECT_NAME} enet)
+#target_link_libraries(${CLIENT_PROJECT_NAME} ${CMAKE_SOURCE_DIR}/libenet.a)
 
 set(SERVER_PROJECT_NAME "server_${PROJECT_NAME}")
 
 add_executable(${SERVER_PROJECT_NAME} server.cpp)
-target_link_libraries(${SERVER_PROJECT_NAME} PUBLIC enet)
+target_link_libraries(${SERVER_PROJECT_NAME} enet)

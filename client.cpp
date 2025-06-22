@@ -1,5 +1,5 @@
 #include <iostream>
-#include <enet/enet.h>
+#include "enet/enet.h"
 
 
 #define CLIENT_VERSION "0.1.1"
