@@ -1,11 +1,20 @@
 #include <stdio.h>
 #include <string>
 #include <map>
+#include <bits/stdc++.h>
 
 #include "enet/enet.h"
 
 
+
 #define SERVER_VERSION "0.1.2"
+
+
+
+void showHelp() {
+  printf("\nUSAGE: server_app [server_port>]\n\n");
+}
+
 
 
 int main (int argc, char** argv) {
@@ -16,6 +25,8 @@ int main (int argc, char** argv) {
     return EXIT_FAILURE;
   }
   atexit(enet_deinitialize);
+
+  showHelp();
 
   int serverPort = 7777;
   if (argv[1] != NULL) {
@@ -50,6 +61,7 @@ int main (int argc, char** argv) {
   printf("Server started and listening port %i\n", address.port);
 
   float guessedNumber = 23.4f;
+  std::string response = "";
   while (true) {
     ENetEvent event;
     ENetPacket* responsePacket;
@@ -74,8 +86,9 @@ int main (int argc, char** argv) {
           // TODO count average deviation for current user using event.packet
           /* Clean up the packet now that we're done using it. */
           enet_packet_destroy(event.packet);
-          responsePacket = enet_packet_create(std::to_string(guessedNumber).c_str(),
-                                              std::to_string(guessedNumber).size() + 1,
+          response = "Guessed number was: " + std::to_string(guessedNumber);
+          responsePacket = enet_packet_create(response.c_str(),
+                                              response.size() + 1,
                                               ENET_PACKET_FLAG_RELIABLE);
           enet_peer_send(event.peer, 0, responsePacket);
           break;
