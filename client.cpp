@@ -19,6 +19,8 @@ std::pair<std::string, int> getAddressAndPortFromSocket(std::string serverSocket
 
 
 int main(int argc, char** argv) {
+  std::srand(std::time({}));
+
   if (enet_initialize() != 0) {
     fprintf(stderr, "An error occured while initializing ENet!\n");
     return EXIT_FAILURE;
@@ -29,7 +31,14 @@ int main(int argc, char** argv) {
   if (argv[1] != NULL) {
     serverSocket = argv[1];
   }
-  std::pair<std::string, int> addressAndPort = getAddressAndPortFromSocket(serverSocket);
+  std::pair<std::string, int> addressAndPort = getAddressAndPortFromSocket(serverSocket);\
+
+  int randNum = std::rand() % 1000;
+  // int randNum = rand() % (max - min + 1) + min;
+  std::string username = "tumba-yumba-" + std::to_string(randNum);
+  if (argv[2] != NULL) {
+    username = argv[2];
+  }
 
   printf("Starting client (version %s)\n", CLIENT_VERSION);
 
@@ -48,8 +57,6 @@ int main(int argc, char** argv) {
   ENetEvent event;
   ENetPeer* peer;
 
-  const char* username = "some body once told me";
-  //std::string username = "some body once told me";
   enet_address_set_host(&address, addressAndPort.first.c_str());
   address.port = addressAndPort.second;
 
@@ -69,9 +76,14 @@ int main(int argc, char** argv) {
 
   // [...Game Loop...]
 
-  /* Create a reliable packet of size 7 containing "packet\0" */
-  ENetPacket* packet = enet_packet_create(username,
-                                          std::strlen(username) + 1,
+  // First of all sending special text containing username
+  // (so server will store this username in map and it will be associated with socket from which user connected)
+  // later this username will be used in leaderboard
+
+  /* Create a reliable packet of size setUsername.size() + 1 containing "${setUsername}\0" */
+  std::string setUsername = "username:" + username;
+  ENetPacket* packet = enet_packet_create(setUsername.c_str(),
+                                          setUsername.size() + 1,
                                           ENET_PACKET_FLAG_RELIABLE);
   /* Send the packet to the peer over channel id 0. */
   enet_peer_send(peer, 0, packet);

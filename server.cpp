@@ -9,6 +9,8 @@
 
 
 int main (int argc, char** argv) {
+  std::srand(std::time({}));
+
   if (enet_initialize() != 0) {
     fprintf(stderr, "An error occurred while initializing ENet.\n");
     return EXIT_FAILURE;
@@ -61,10 +63,11 @@ int main (int argc, char** argv) {
           break;
           // TODO get server name from args and send it in response when client connected
         case ENET_EVENT_TYPE_RECEIVE:
-          printf("A packet of length %u containing '%s' was received from %s on channel %u.\n",
+          printf("A packet of length %u containing '%s' was received from %x:%u on channel %u.\n",
                  event.packet -> dataLength,
                  event.packet -> data,
-                 event.peer -> data,
+                 event.peer -> address.host,
+                 event.peer -> address.port,
                  event.channelID);
           // TODO store number of guesses and deviation summ for each user
           // store it in map using sockets as keys: "event.peer->address.host : event.peer->address.port"
