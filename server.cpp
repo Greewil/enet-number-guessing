@@ -1,17 +1,24 @@
 #include <stdio.h>
 #include <string>
+#include <map>
+
 #include "enet/enet.h"
 
 
 #define SERVER_VERSION "0.1.2"
 
 
-int main (int argc, char ** argv) {
+int main (int argc, char** argv) {
   if (enet_initialize() != 0) {
     fprintf(stderr, "An error occurred while initializing ENet.\n");
     return EXIT_FAILURE;
   }
   atexit(enet_deinitialize);
+
+  int serverPort = 7777;
+  if (argv[1] != NULL) {
+    serverPort = std::stoi(argv[1]);
+  }
 
   printf("Starting server (version %s)\n", SERVER_VERSION);
   // TODO check versions compatable while clients connecting to server
@@ -23,10 +30,9 @@ int main (int argc, char ** argv) {
   /* Bind the server to the default localhost.     */
   /* A specific host address can be specified by   */
   /* enet_address_set_host (& address, "x.x.x.x"); */
-  address.host = ENET_HOST_ANY; // This allows
-  /* Bind the server to port 7777. */
-  // TODO try to get port from args
-  address.port = 7777;
+  address.host = ENET_HOST_ANY; // This allows to start on current host
+  /* Bind the server to port serverPort. */
+  address.port = serverPort;
 
   server = enet_host_create(&address	/* the address to bind the server host to */,
                             64	/* allow up to 32 clients and/or outgoing connections */,

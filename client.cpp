@@ -1,17 +1,35 @@
 #include <iostream>
 #include <cstring>
+#include <bits/stdc++.h>
+
 #include "enet/enet.h"
 
 
 #define CLIENT_VERSION "0.1.2"
 
 
-int main(int argc, char ** argv) {
+std::pair<std::string, int> getAddressAndPortFromSocket(std::string serverSocket) {
+  std::stringstream ss(serverSocket);
+  std::string serverAddress;
+  std::string serverPort;
+  getline(ss, serverAddress, ':');
+  getline(ss, serverPort, ':');
+  return std::pair<std::string, int>(serverAddress, std::stoi(serverPort));
+}
+
+
+int main(int argc, char** argv) {
   if (enet_initialize() != 0) {
     fprintf(stderr, "An error occured while initializing ENet!\n");
     return EXIT_FAILURE;
   }
   atexit(enet_deinitialize);
+
+  std::string serverSocket = "127.0.0.1:7777";
+  if (argv[1] != NULL) {
+    serverSocket = argv[1];
+  }
+  std::pair<std::string, int> addressAndPort = getAddressAndPortFromSocket(serverSocket);
 
   printf("Starting client (version %s)\n", CLIENT_VERSION);
 
@@ -32,9 +50,8 @@ int main(int argc, char ** argv) {
 
   const char* username = "some body once told me";
   //std::string username = "some body once told me";
-  // TODO try to get address and port from args (or from console input)
-  enet_address_set_host(&address, "127.0.0.1");
-  address.port = 7777;
+  enet_address_set_host(&address, addressAndPort.first.c_str());
+  address.port = addressAndPort.second;
 
   peer = enet_host_connect(client, &address, 1, 0);
   if (peer == NULL) {
@@ -43,10 +60,10 @@ int main(int argc, char ** argv) {
   }
 
   if (enet_host_service(client, &event, 5000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
-    puts("Connection to 127.0.0.1:7777 succeeded.");
+    printf("Connection to '%s:%i' succeeded.\n", addressAndPort.first.c_str(), addressAndPort.second);
   } else {
     enet_peer_reset(peer);
-    puts("Connection to 127.0.0.1:7777 failed.");
+    printf("Connection to '%s:%i' failed.\n", addressAndPort.first.c_str(), addressAndPort.second);
     return EXIT_SUCCESS;
   }
 
