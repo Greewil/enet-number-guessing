@@ -8,7 +8,7 @@
 
 
 
-#define SERVER_VERSION "0.1.2"
+#define SERVER_VERSION "0.1.3"
 
 
 
@@ -22,19 +22,32 @@ std::string convertUnetDataToString(enet_uint8 * data) {
   return str;
 }
 
+double getAverageDifference(const std::pair<int, int> & attemptsAndTotalDifference) {
+  return 1.0 * attemptsAndTotalDifference.second / attemptsAndTotalDifference.first;
+}
+
 std::string getLeaderboard(std::map<std::string, std::string> & mapSockerName,
                            const std::map<std::string, std::pair<int, int>> & mapNameStats) {
-  std::string leaderboard = "";
+  std::string leaderboard = "\n";
   // vector of averageDifferenses for connected players
   std::vector<std::pair<std::string, double>> averageDifferenses;
 
   for (auto itr = mapNameStats.begin(); itr != mapNameStats.end(); ++itr) {
-    // TODO select only namef from mapSockerName
-    // name itr->first 
-    // pair<int, int> stats it->second.first
+    // if (mapSockerName.find("") == mapSockerName.end()) {
+    //   //
+    // }
+    averageDifferenses.push_back({ itr->first, getAverageDifference(itr->second) });
+    // TODO select only names from mapSockerName
   }
-  //TODO sort vec
-  // append all elements to leaderboard
+  std::sort(averageDifferenses.begin(), 
+            averageDifferenses.end(), 
+            [](std::pair<std::string, double> a, std::pair<std::string, double> b) { return a.second < b.second; });
+  int i=0;
+  for (auto itr = averageDifferenses.begin(); itr != averageDifferenses.end(); ++itr) {
+    leaderboard += std::to_string(i + 1) + ") " + itr->first + ": " + std::to_string(itr->second) + "\n";
+    i++;
+  }
+  return leaderboard;
 }
 
 void sendResponse(ENetPeer* peer, const std::string & responseData, ENetPacket * packet) {
@@ -132,7 +145,7 @@ int main (int argc, char** argv) {
           response = "-\n";
           if (currentInput == "lb") {
             response = "Leaderboard:\n";
-            response += "TODO print leaderboard\n";
+            response += getLeaderboard(mapSockerName, mapNameStats);
           } else if (currentInput.rfind("setusername:", 0) == 0) {
             std::string newUsername = currentInput.substr(12, currentInput.size());
             mapNameStats[newUsername] = mapNameStats[mapSockerName[currentUserSocket]];
@@ -147,7 +160,7 @@ int main (int argc, char** argv) {
             guessedNumber = rand() % (101);  // [0, 100]
             response = "Guessed number was: " + std::to_string(guessedNumber) + "\n";
             response += "Your difference: " + std::to_string(currentUserDifference) + "\n";
-            response += "Average difference: " + std::to_string(1.0 * mapNameStats[mapSockerName[currentUserSocket]].second / mapNameStats[mapSockerName[currentUserSocket]].first) + "\n";
+            response += "Average difference: " + std::to_string(getAverageDifference(mapNameStats[mapSockerName[currentUserSocket]])) + "\n";
           } else {
             response = "Bad request.\n";
           }

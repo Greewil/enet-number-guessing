@@ -6,7 +6,7 @@
 
 
 
-#define CLIENT_VERSION "0.2.0"
+#define CLIENT_VERSION "0.2.1"
 
 
 
@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
   int randNum = std::rand() % 1000;
   // int randNum = rand() % (max - min + 1) + min;
   std::string username = "tumba-yumba-" + std::to_string(randNum);
-  if (argv[2] != NULL) {
+  if (argv[1] != NULL && argv[2] != NULL) {
     username = argv[2];
   }
 
