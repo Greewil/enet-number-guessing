@@ -36,6 +36,12 @@ void sendPackageToServer(ENetPeer* peer, const std::string& sendingData, ENetPac
   enet_peer_send(peer, 0, packet);
 }
 
+void printResponseFromServer(ENetPacket* packet) {
+  printf("%s\n", packet->data);
+  /* Clean up the packet now that we're done using it. */
+  enet_packet_destroy(packet);
+}
+
 void showHelp() {
   printf("\nUSAGE: client_app [<server_address:server_port>] [username]\n");
   printf("\n");
@@ -124,7 +130,11 @@ int main(int argc, char** argv) {
   // First of all sending special text containing username
   // (so server will store this username in map and it will be associated with socket from which user connected)
   // later this username will be used in leaderboard
-  setUsername(peer, "username:" + username, currentPacket);
+  setUsername(peer, "setusername:" + username, currentPacket);
+  // wait for server response
+  if (enet_host_service(client, &event, 1000) > 0 && event.type == ENET_EVENT_TYPE_RECEIVE) {
+    printResponseFromServer(event.packet);
+  }
 
   while (true) {
     std::cin >> currentInput;
@@ -136,7 +146,6 @@ int main(int argc, char** argv) {
       sendPackageToServer(peer, "lb", currentPacket);
     } else if (currentInput.rfind("setusername:", 0) == 0) {
       username = currentInput.substr(12, currentInput.size());
-      std::cout << username << std::endl;
       sendPackageToServer(peer, currentInput, currentPacket);
     } else if (isOnlyDigits(currentInput)) {
       // guessing number
@@ -153,9 +162,7 @@ int main(int argc, char** argv) {
     if (enet_host_service(client, &event, 1000) > 0) {
       switch (event.type) {
         case ENET_EVENT_TYPE_RECEIVE:
-          printf("%s.\n", event.packet->data);
-          /* Clean up the packet now that we're done using it. */
-          enet_packet_destroy(event.packet);
+          printResponseFromServer(event.packet);
           break;
       }
     } else {

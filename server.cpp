@@ -15,6 +15,19 @@ void showHelp() {
   printf("\nUSAGE: server_app [server_port>]\n\n");
 }
 
+std::string convertUnetDataToString(enet_uint8 * data) {
+  char* inputChars = (char *) data;
+  std::string str = inputChars;
+  return str;
+}
+
+void sendResponse(ENetPeer* peer, const std::string& responseData, ENetPacket* packet) {
+  packet = enet_packet_create(responseData.c_str(),
+                              responseData.size() + 1,
+                              ENET_PACKET_FLAG_RELIABLE);
+  enet_peer_send(peer, 0, packet);
+}
+
 
 
 int main (int argc, char** argv) {
@@ -60,7 +73,10 @@ int main (int argc, char** argv) {
 
   printf("Server started and listening port %i\n", address.port);
 
-  float guessedNumber = 23.4f;
+  int guessedNumber = 42;
+  int currentUserNumber = 0;
+  int currentUserDifference = 0;
+  std::string currentInput = "";
   std::string response = "";
   while (true) {
     ENetEvent event;
@@ -73,7 +89,6 @@ int main (int argc, char** argv) {
                  event.peer -> address.host,
                  event.peer -> address.port);
           break;
-          // TODO get server name from args and send it in response when client connected
         case ENET_EVENT_TYPE_RECEIVE:
           printf("A packet of length %u containing '%s' was received from %x:%u on channel %u.\n",
                  event.packet -> dataLength,
@@ -85,12 +100,26 @@ int main (int argc, char** argv) {
           // store it in map using sockets as keys: "event.peer->address.host : event.peer->address.port"
           // TODO count average deviation for current user using event.packet
           /* Clean up the packet now that we're done using it. */
+          currentInput = convertUnetDataToString(event.packet->data);
+          response = "-\n";
+          if (currentInput == "lb") {
+            response = "Leaderboard:\n";
+            response += "TODO print leaderboard\n";
+          } else if (currentInput.rfind("setusername:", 0) == 0) {
+            std::string newUsername = currentInput.substr(12, currentInput.size());
+            response = "New username: " + newUsername + "\n";
+          } else if (currentInput.rfind("n:", 0) == 0) {
+            currentUserNumber = std::stoi(currentInput.substr(2, currentInput.size()));
+            currentUserDifference = std::abs(guessedNumber - currentUserNumber);
+            // TODO add to leaderboard
+            guessedNumber = rand() % (101);  // [0, 100]
+            response = "Guessed number was: " + std::to_string(guessedNumber) + "\n";
+            response += "Your difference: " + std::to_string(currentUserDifference) + "\n";
+          } else {
+            response = "Bad request.\n";
+          }
           enet_packet_destroy(event.packet);
-          response = "Guessed number was: " + std::to_string(guessedNumber);
-          responsePacket = enet_packet_create(response.c_str(),
-                                              response.size() + 1,
-                                              ENET_PACKET_FLAG_RELIABLE);
-          enet_peer_send(event.peer, 0, responsePacket);
+          sendResponse(event.peer, response, responsePacket);
           break;
         case ENET_EVENT_TYPE_DISCONNECT:
           printf("%s disconnected.\n", event.peer -> data);
