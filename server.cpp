@@ -73,7 +73,13 @@ int main (int argc, char** argv) {
 
   printf("Server started and listening port %i\n", address.port);
 
+  // <userSocket, username>
+  std::map<std::string, std::string> mapSockerName = {};
+  // <username, pair<attempts, totalDifference>>
+  std::map<std::string, std::pair<int, double>> mapNameStats = {};
+
   int guessedNumber = 42;
+  std::string currentUserSocket = "";
   int currentUserNumber = 0;
   int currentUserDifference = 0;
   std::string currentInput = "";
@@ -83,11 +89,17 @@ int main (int argc, char** argv) {
     ENetPacket* responsePacket;
     /* Wait up to 1000 milliseconds for an event. */
     while (enet_host_service(server, &event, 1000) > 0) {
+      currentUserSocket = std::to_string((int) event.peer->address.host) + ":" + std::to_string((int) event.peer->address.port);
       switch (event.type) {
         case ENET_EVENT_TYPE_CONNECT:
           printf("A new client connected from %x:%u.\n",
                  event.peer -> address.host,
                  event.peer -> address.port);
+          if (mapSockerName.find(currentUserSocket) == mapSockerName.end()) {
+            mapSockerName.insert({currentUserSocket, std::to_string(rand())});
+            printf("Added new user: (username = %s, socket = %s).\n", mapSockerName[currentUserSocket].c_str(), currentUserSocket.c_str());
+            mapNameStats[mapSockerName[currentUserSocket]] = {0, 0.0};
+          }
           break;
         case ENET_EVENT_TYPE_RECEIVE:
           printf("A packet of length %u containing '%s' was received from %x:%u on channel %u.\n",
@@ -111,10 +123,13 @@ int main (int argc, char** argv) {
           } else if (currentInput.rfind("n:", 0) == 0) {
             currentUserNumber = std::stoi(currentInput.substr(2, currentInput.size()));
             currentUserDifference = std::abs(guessedNumber - currentUserNumber);
+            mapNameStats[mapSockerName[currentUserSocket]].first += 1;
+            mapNameStats[mapSockerName[currentUserSocket]].second += currentUserDifference;
             // TODO add to leaderboard
             guessedNumber = rand() % (101);  // [0, 100]
             response = "Guessed number was: " + std::to_string(guessedNumber) + "\n";
             response += "Your difference: " + std::to_string(currentUserDifference) + "\n";
+            response += "Average difference: " + std::to_string(mapNameStats[mapSockerName[currentUserSocket]].second / mapNameStats[mapSockerName[currentUserSocket]].first) + "\n";
           } else {
             response = "Bad request.\n";
           }
