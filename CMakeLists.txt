@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 4.0)
 
+# TODO only for linux
 set(CMAKE_C_COMPILER "/usr/bin/clang-14")
 set(CMAKE_CXX_COMPILER "/usr/bin/clang++-14")
 
