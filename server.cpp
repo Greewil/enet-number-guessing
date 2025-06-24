@@ -31,13 +31,20 @@ std::string getLeaderboard(std::map<std::string, std::string> & mapSockerName,
   std::string leaderboard = "\n";
   // vector of averageDifferenses for connected players
   std::vector<std::pair<std::string, double>> averageDifferenses;
+  bool isUsernameConnected = false;
 
-  for (auto itr = mapNameStats.begin(); itr != mapNameStats.end(); ++itr) {
-    // if (mapSockerName.find("") == mapSockerName.end()) {
-    //   //
-    // }
-    averageDifferenses.push_back({ itr->first, getAverageDifference(itr->second) });
-    // TODO select only names from mapSockerName
+  for (auto itrNameStats = mapNameStats.begin(); itrNameStats != mapNameStats.end(); ++itrNameStats) {
+    // search username in connected users
+    isUsernameConnected = false;
+    for (auto itrSocketName = mapSockerName.begin(); itrSocketName != mapSockerName.end(); ++itrSocketName) {
+      if (itrSocketName->second == itrNameStats->first) {
+        isUsernameConnected = true;
+      }
+    }
+    // check username connected and already played some games
+    if (isUsernameConnected && itrNameStats->second.first != NULL) {
+      averageDifferenses.push_back({ itrNameStats->first, getAverageDifference(itrNameStats->second) });
+    }
   }
   std::sort(averageDifferenses.begin(), 
             averageDifferenses.end(), 
@@ -137,10 +144,6 @@ int main (int argc, char** argv) {
                  event.peer->address.host,
                  event.peer->address.port,
                  event.channelID);
-          // TODO store number of guesses and deviation summ for each user
-          // store it in map using sockets as keys: "event.peer->address.host : event.peer->address.port"
-          // TODO count average deviation for current user using event.packet
-          /* Clean up the packet now that we're done using it. */
           currentInput = convertUnetDataToString(event.packet->data);
           response = "-\n";
           if (currentInput == "lb") {
@@ -164,11 +167,12 @@ int main (int argc, char** argv) {
           } else {
             response = "Bad request.\n";
           }
+          /* Clean up the packet now that we're done using it. */
           enet_packet_destroy(event.packet);
           sendResponse(event.peer, response, responsePacket);
           break;
         case ENET_EVENT_TYPE_DISCONNECT:
-          // TODO remove user from socketName map
+          mapSockerName.erase(currentUserSocket);
           printf("%s disconnected.\n", event.peer->data);
           /* Reset the peer's client information. */
           event.peer->data = NULL;
