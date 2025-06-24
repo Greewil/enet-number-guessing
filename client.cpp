@@ -120,6 +120,7 @@ int main(int argc, char** argv) {
     printf("Connection to '%s:%i' failed.\n", addressAndPort.first.c_str(), addressAndPort.second);
     return EXIT_SUCCESS;
   }
+  enet_peer_timeout(peer, 100000, 0, 100000);
 
   // [...Game Loop...]
 
@@ -138,6 +139,7 @@ int main(int argc, char** argv) {
 
   while (true) {
     std::cin >> currentInput;
+    // TODO should ping server (in separate thread) otherwise it will automatically disconnect after some time
     if (currentInput == "exit") {
       isForceDisconnect = true;
     } else if (currentInput == "help" || currentInput == "h") {
@@ -147,7 +149,7 @@ int main(int argc, char** argv) {
     } else if (currentInput.rfind("setusername:", 0) == 0) {
       username = currentInput.substr(12, currentInput.size());
       sendPackageToServer(peer, currentInput, currentPacket);
-    } else if (isOnlyDigits(currentInput)) {
+    } else if (isOnlyDigits(currentInput) && currentInput.size() > 0) {
       // guessing number
       sendPackageToServer(peer, "n:" + currentInput, currentPacket);
     } else {
@@ -167,8 +169,33 @@ int main(int argc, char** argv) {
       }
     } else {
       printf("connection lost ...\n");
-      // TODO try to reconnect one more time (and set username again when reconnected)
-      break;
+      // add new connection
+      client = enet_host_create(NULL	/* the address to bind the server host to */,
+                                1	/* allow up to 32 clients and/or outgoing connections */,
+                                1	/* allow up to 1 channel to be used, 0. */,
+                                0	/* assume any amount of incoming bandwidth */,
+                                0	/* assume any amount of outgoing bandwidth */);
+      if (client == NULL) {
+        fprintf(stderr, "An error occurred while trying to create an ENet client host.\n");
+        exit (EXIT_FAILURE);
+      }
+      peer = enet_host_connect(client, &address, 1, 0);
+      if (peer == NULL) {
+        fprintf(stderr, "No available peers for initiating an ENet connection!\n");
+        return EXIT_FAILURE;
+      }
+      if (enet_host_service(client, &event, 2000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
+        printf("Connection to '%s:%i' succeeded.\n", addressAndPort.first.c_str(), addressAndPort.second);
+      } else {
+        enet_peer_reset(peer);
+        printf("Connection to '%s:%i' failed.\n", addressAndPort.first.c_str(), addressAndPort.second);
+        return EXIT_SUCCESS;
+      }
+      // update username in new connection
+      setUsername(peer, "setusername:" + username, currentPacket);
+      if (enet_host_service(client, &event, 1000) > 0 && event.type == ENET_EVENT_TYPE_RECEIVE) {
+        printResponseFromServer(event.packet);
+      }
     }
   }
 

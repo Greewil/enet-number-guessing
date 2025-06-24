@@ -172,8 +172,8 @@ int main (int argc, char** argv) {
           sendResponse(event.peer, response, responsePacket);
           break;
         case ENET_EVENT_TYPE_DISCONNECT:
+          printf("%s disconnected.\n", mapSockerName[currentUserSocket].c_str());
           mapSockerName.erase(currentUserSocket);
-          printf("%s disconnected.\n", event.peer->data);
           /* Reset the peer's client information. */
           event.peer->data = NULL;
           break;
