@@ -151,16 +151,18 @@ int main (int argc, char** argv) {
             response += getLeaderboard(mapSockerName, mapNameStats);
           } else if (currentInput.rfind("setusername:", 0) == 0) {
             std::string newUsername = currentInput.substr(12, currentInput.size());
-            mapNameStats[newUsername] = mapNameStats[mapSockerName[currentUserSocket]];
+            if (mapNameStats.find(mapSockerName[currentUserSocket]) == mapNameStats.end()) {
+              mapNameStats[newUsername] = mapNameStats[mapSockerName[currentUserSocket]];
+            }
             mapNameStats.erase(mapSockerName[currentUserSocket]);
             mapSockerName[currentUserSocket] = newUsername;
             response = "New username: " + newUsername + "\n";
           } else if (currentInput.rfind("n:", 0) == 0) {
+            guessedNumber = rand() % 101;  // [0, 100]
             currentUserNumber = std::stoi(currentInput.substr(2, currentInput.size()));
             currentUserDifference = std::abs(guessedNumber - currentUserNumber);
             mapNameStats[mapSockerName[currentUserSocket]].first += 1;
             mapNameStats[mapSockerName[currentUserSocket]].second += currentUserDifference;
-            guessedNumber = rand() % (101);  // [0, 100]
             response = "Guessed number was: " + std::to_string(guessedNumber) + "\n";
             response += "Your difference: " + std::to_string(currentUserDifference) + "\n";
             response += "Average difference: " + std::to_string(getAverageDifference(mapNameStats[mapSockerName[currentUserSocket]])) + "\n";
