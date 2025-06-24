@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string>
 #include <map>
+#include <vector>
 #include <bits/stdc++.h>
 
 #include "enet/enet.h"
@@ -21,7 +22,22 @@ std::string convertUnetDataToString(enet_uint8 * data) {
   return str;
 }
 
-void sendResponse(ENetPeer* peer, const std::string& responseData, ENetPacket* packet) {
+std::string getLeaderboard(std::map<std::string, std::string> & mapSockerName,
+                           const std::map<std::string, std::pair<int, int>> & mapNameStats) {
+  std::string leaderboard = "";
+  // vector of averageDifferenses for connected players
+  std::vector<std::pair<std::string, double>> averageDifferenses;
+
+  for (auto itr = mapNameStats.begin(); itr != mapNameStats.end(); ++itr) {
+    // TODO select only namef from mapSockerName
+    // name itr->first 
+    // pair<int, int> stats it->second.first
+  }
+  //TODO sort vec
+  // append all elements to leaderboard
+}
+
+void sendResponse(ENetPeer* peer, const std::string & responseData, ENetPacket * packet) {
   packet = enet_packet_create(responseData.c_str(),
                               responseData.size() + 1,
                               ENET_PACKET_FLAG_RELIABLE);
@@ -76,7 +92,7 @@ int main (int argc, char** argv) {
   // <userSocket, username>
   std::map<std::string, std::string> mapSockerName = {};
   // <username, pair<attempts, totalDifference>>
-  std::map<std::string, std::pair<int, double>> mapNameStats = {};
+  std::map<std::string, std::pair<int, int>> mapNameStats = {};
 
   int guessedNumber = 42;
   std::string currentUserSocket = "";
@@ -93,8 +109,8 @@ int main (int argc, char** argv) {
       switch (event.type) {
         case ENET_EVENT_TYPE_CONNECT:
           printf("A new client connected from %x:%u.\n",
-                 event.peer -> address.host,
-                 event.peer -> address.port);
+                 event.peer->address.host,
+                 event.peer->address.port);
           if (mapSockerName.find(currentUserSocket) == mapSockerName.end()) {
             mapSockerName.insert({currentUserSocket, std::to_string(rand())});
             printf("Added new user: (username = %s, socket = %s).\n", mapSockerName[currentUserSocket].c_str(), currentUserSocket.c_str());
@@ -103,10 +119,10 @@ int main (int argc, char** argv) {
           break;
         case ENET_EVENT_TYPE_RECEIVE:
           printf("A packet of length %u containing '%s' was received from %x:%u on channel %u.\n",
-                 event.packet -> dataLength,
-                 event.packet -> data,
-                 event.peer -> address.host,
-                 event.peer -> address.port,
+                 event.packet->dataLength,
+                 event.packet->data,
+                 event.peer->address.host,
+                 event.peer->address.port,
                  event.channelID);
           // TODO store number of guesses and deviation summ for each user
           // store it in map using sockets as keys: "event.peer->address.host : event.peer->address.port"
@@ -119,17 +135,19 @@ int main (int argc, char** argv) {
             response += "TODO print leaderboard\n";
           } else if (currentInput.rfind("setusername:", 0) == 0) {
             std::string newUsername = currentInput.substr(12, currentInput.size());
+            mapNameStats[newUsername] = mapNameStats[mapSockerName[currentUserSocket]];
+            mapNameStats.erase(mapSockerName[currentUserSocket]);
+            mapSockerName[currentUserSocket] = newUsername;
             response = "New username: " + newUsername + "\n";
           } else if (currentInput.rfind("n:", 0) == 0) {
             currentUserNumber = std::stoi(currentInput.substr(2, currentInput.size()));
             currentUserDifference = std::abs(guessedNumber - currentUserNumber);
             mapNameStats[mapSockerName[currentUserSocket]].first += 1;
             mapNameStats[mapSockerName[currentUserSocket]].second += currentUserDifference;
-            // TODO add to leaderboard
             guessedNumber = rand() % (101);  // [0, 100]
             response = "Guessed number was: " + std::to_string(guessedNumber) + "\n";
             response += "Your difference: " + std::to_string(currentUserDifference) + "\n";
-            response += "Average difference: " + std::to_string(mapNameStats[mapSockerName[currentUserSocket]].second / mapNameStats[mapSockerName[currentUserSocket]].first) + "\n";
+            response += "Average difference: " + std::to_string(1.0 * mapNameStats[mapSockerName[currentUserSocket]].second / mapNameStats[mapSockerName[currentUserSocket]].first) + "\n";
           } else {
             response = "Bad request.\n";
           }
@@ -137,9 +155,10 @@ int main (int argc, char** argv) {
           sendResponse(event.peer, response, responsePacket);
           break;
         case ENET_EVENT_TYPE_DISCONNECT:
-          printf("%s disconnected.\n", event.peer -> data);
+          // TODO remove user from socketName map
+          printf("%s disconnected.\n", event.peer->data);
           /* Reset the peer's client information. */
-          event.peer -> data = NULL;
+          event.peer->data = NULL;
           break;
       }
     }

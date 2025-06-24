@@ -167,7 +167,7 @@ int main(int argc, char** argv) {
       }
     } else {
       printf("connection lost ...\n");
-      // TODO try to reconnect one more time
+      // TODO try to reconnect one more time (and set username again when reconnected)
       break;
     }
   }
