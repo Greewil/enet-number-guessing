@@ -6,9 +6,15 @@
 
 
 
-#define CLIENT_VERSION "0.2.1"
+#define CLIENT_VERSION "1.0.0"
 
 
+
+std::string convertUnetDataToString(enet_uint8 * data) {
+  char* inputChars = (char *) data;
+  std::string str = inputChars;
+  return str;
+}
 
 std::pair<std::string, int> getAddressAndPortFromSocket(std::string serverSocket) {
   std::stringstream ss(serverSocket);
@@ -57,9 +63,20 @@ void showHelp() {
   printf("\n");
 }
 
-void setUsername(ENetPeer * peer, const std::string & newUsername, ENetPacket * packet) {
-  sendPackageToServer(peer, packet, newUsername);
+void setUsername(ENetPeer * peer, ENetPacket * packet, const std::string & newUsername) {
+  sendPackageToServer(peer, packet, "setusername:" + newUsername);
 }
+
+// void checkVersionsCompatible(ENetPeer * peer, ENetPacket * packet) {
+//   ENetEvent event;
+//   sendPackageToServer(peer, currentPacket, "version");
+//   if (enet_host_service(client, &event, 1000) > 0 && event.type == ENET_EVENT_TYPE_RECEIVE) {
+//     printf("Server version: %s.\n", event.packet->data);
+//     if (convertUnetDataToString(event.packet->data) != CLIENT_VERSION) {
+//       exit(EXIT_FAILURE);
+//     }
+//   }
+// }
 
 std::pair<ENetHost*, ENetPeer*> connectToServer(const std::pair<std::string, int> & addressAndPort) {
   ENetHost* client;
@@ -128,21 +145,39 @@ int main(int argc, char** argv) {
   ENetHost* client = clientPeer.first;
   ENetPeer* peer = clientPeer.second;
   ENetEvent event;
-
-  // [...Game Loop...]
-
-  std::string currentInput = "";
   ENetPacket* currentPacket;
-  bool isForceDisconnect = false;
 
-  // First of all sending special text containing username
-  // (so server will store this username in map and it will be associated with socket from which user connected)
+  // check server have compatible version (same major version parts, otherwise disconnect)
+  sendPackageToServer(peer, currentPacket, "version");
+  if (enet_host_service(client, &event, 1000) > 0 && event.type == ENET_EVENT_TYPE_RECEIVE) {
+    printf("Server version: %s\n", event.packet->data);
+    std::string clientVersion = CLIENT_VERSION;
+    std::string clientMajorVersion = clientVersion.substr(0, 2);
+    // std::string clientMajorVersion = clientVersion.substr(0, clientVersion.rfind(".", 0));
+    std::string serverVersion = convertUnetDataToString(event.packet->data);
+    std::string serverMajorVersion = serverVersion.substr(0, 2);
+    // std::string serverMajorVersion = serverVersion.substr(0, serverVersion.find(".", 0));
+    // std::cout << clientMajorVersion << std::endl;
+    // std::cout << serverMajorVersion << std::endl;
+    if (clientMajorVersion != serverMajorVersion) {
+      printf("Incompatibale major version!\n");
+      exit(EXIT_FAILURE);
+    }
+  }
+
+  // Sending current username
+  // (so server will store this username in map and it will be associated with current client's socket)
   // later this username will be used in leaderboard
-  setUsername(peer, "setusername:" + username, currentPacket);
+  setUsername(peer, currentPacket, username);
   // wait for server response
   if (enet_host_service(client, &event, 1000) > 0 && event.type == ENET_EVENT_TYPE_RECEIVE) {
     printResponseFromServer(event.packet);
   }
+
+  // [...Game Loop...]
+
+  std::string currentInput = "";
+  bool isForceDisconnect = false;
 
   while (true) {
     std::cin >> currentInput;
@@ -182,7 +217,7 @@ int main(int argc, char** argv) {
       client = clientPeer.first;
       peer = clientPeer.second;
       // update username in new connection
-      setUsername(peer, "setusername:" + username, currentPacket);
+      setUsername(peer, currentPacket, username);
       if (enet_host_service(client, &event, 1000) > 0 && event.type == ENET_EVENT_TYPE_RECEIVE) {
         printResponseFromServer(event.packet);
       }

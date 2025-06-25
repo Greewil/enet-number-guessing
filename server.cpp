@@ -8,7 +8,7 @@
 
 
 
-#define SERVER_VERSION "0.1.3"
+#define SERVER_VERSION "1.0.0"
 
 
 
@@ -83,7 +83,6 @@ int main (int argc, char ** argv) {
   }
 
   printf("Starting server (version %s)\n", SERVER_VERSION);
-  // TODO check versions compatable while clients connecting to server
 
   ENetEvent event;
   ENetAddress address;
@@ -149,6 +148,8 @@ int main (int argc, char ** argv) {
           if (currentInput == "lb") {
             response = "Leaderboard:\n";
             response += getLeaderboard(mapSockerName, mapNameStats);
+          } else if (currentInput == "version") {
+            response = SERVER_VERSION;
           } else if (currentInput.rfind("setusername:", 0) == 0) {
             std::string newUsername = currentInput.substr(12, currentInput.size());
             if (mapNameStats.find(mapSockerName[currentUserSocket]) == mapNameStats.end()) {
