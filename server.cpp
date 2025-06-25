@@ -57,7 +57,7 @@ std::string getLeaderboard(std::map<std::string, std::string> & mapSockerName,
   return leaderboard;
 }
 
-void sendResponse(ENetPeer* peer, const std::string & responseData, ENetPacket * packet) {
+void sendResponse(ENetPeer * peer, const std::string & responseData, ENetPacket * packet) {
   packet = enet_packet_create(responseData.c_str(),
                               responseData.size() + 1,
                               ENET_PACKET_FLAG_RELIABLE);
@@ -66,7 +66,7 @@ void sendResponse(ENetPeer* peer, const std::string & responseData, ENetPacket *
 
 
 
-int main (int argc, char** argv) {
+int main (int argc, char ** argv) {
   std::srand(std::time({}));
 
   if (enet_initialize() != 0) {

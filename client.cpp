@@ -27,7 +27,7 @@ bool isOnlyDigits(std::string str) {
   );
 }
 
-void sendPackageToServer(ENetPeer* peer, const std::string& sendingData, ENetPacket* packet) {
+void sendPackageToServer(ENetPeer * peer, ENetPacket * packet, const std::string & sendingData) {
   /* Create a reliable packet of size sendingData.size() + 1 containing "${sendingData}\0" */
   packet = enet_packet_create(sendingData.c_str(),
                               sendingData.size() + 1,
@@ -36,7 +36,7 @@ void sendPackageToServer(ENetPeer* peer, const std::string& sendingData, ENetPac
   enet_peer_send(peer, 0, packet);
 }
 
-void printResponseFromServer(ENetPacket* packet) {
+void printResponseFromServer(ENetPacket * packet) {
   printf("%s\n", packet->data);
   /* Clean up the packet now that we're done using it. */
   enet_packet_destroy(packet);
@@ -57,8 +57,44 @@ void showHelp() {
   printf("\n");
 }
 
-void setUsername(ENetPeer* peer, const std::string& newUsername, ENetPacket* packet) {
-  sendPackageToServer(peer, newUsername, packet);
+void setUsername(ENetPeer * peer, const std::string & newUsername, ENetPacket * packet) {
+  sendPackageToServer(peer, packet, newUsername);
+}
+
+std::pair<ENetHost*, ENetPeer*> connectToServer(const std::pair<std::string, int> & addressAndPort) {
+  ENetHost* client;
+  ENetPeer* peer;
+
+  client = enet_host_create(NULL	/* the address to bind the server host to */,
+                            1	/* allow up to 32 clients and/or outgoing connections */,
+                            1	/* allow up to 1 channel to be used, 0. */,
+                            0	/* assume any amount of incoming bandwidth */,
+                            0	/* assume any amount of outgoing bandwidth */);
+  if (client == NULL) {
+    fprintf(stderr, "An error occurred while trying to create an ENet client host.\n");
+    exit(EXIT_FAILURE);
+  }
+  
+  ENetAddress address;
+  enet_address_set_host(&address, addressAndPort.first.c_str());
+  address.port = addressAndPort.second;
+
+  peer = enet_host_connect(client, &address, 1, 0);
+  if (peer == NULL) {
+    fprintf(stderr, "No available peers for initiating an ENet connection!\n");
+    exit(EXIT_FAILURE);
+  }
+
+  ENetEvent event;
+  if (enet_host_service(client, &event, 1000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
+    printf("Connection to '%s:%i' succeeded.\n", addressAndPort.first.c_str(), addressAndPort.second);
+  } else {
+    enet_peer_reset(peer);
+    printf("Connection to '%s:%i' failed.\n", addressAndPort.first.c_str(), addressAndPort.second);
+    exit(EXIT_FAILURE);
+  }
+  
+  return {client, peer};
 }
 
 
@@ -81,7 +117,6 @@ int main(int argc, char** argv) {
   std::pair<std::string, int> addressAndPort = getAddressAndPortFromSocket(serverSocket);\
 
   int randNum = std::rand() % 1000;
-  // int randNum = rand() % (max - min + 1) + min;
   std::string username = "tumba-yumba-" + std::to_string(randNum);
   if (argv[1] != NULL && argv[2] != NULL) {
     username = argv[2];
@@ -89,38 +124,10 @@ int main(int argc, char** argv) {
 
   printf("Starting client (version %s)\n", CLIENT_VERSION);
 
-  ENetHost* client;
-  client = enet_host_create(NULL	/* the address to bind the server host to */,
-                            1	/* allow up to 32 clients and/or outgoing connections */,
-                            1	/* allow up to 1 channel to be used, 0. */,
-                            0	/* assume any amount of incoming bandwidth */,
-                            0	/* assume any amount of outgoing bandwidth */);
-  if (client == NULL) {
-    fprintf(stderr, "An error occurred while trying to create an ENet client host.\n");
-    exit (EXIT_FAILURE);
-  }
-
-  ENetAddress address;
+  std::pair<ENetHost*, ENetPeer*> clientPeer = connectToServer(addressAndPort);
+  ENetHost* client = clientPeer.first;
+  ENetPeer* peer = clientPeer.second;
   ENetEvent event;
-  ENetPeer* peer;
-
-  enet_address_set_host(&address, addressAndPort.first.c_str());
-  address.port = addressAndPort.second;
-
-  peer = enet_host_connect(client, &address, 1, 0);
-  if (peer == NULL) {
-    fprintf(stderr, "No available peers for initiating an ENet connection!\n");
-    return EXIT_FAILURE;
-  }
-
-  if (enet_host_service(client, &event, 5000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
-    printf("Connection to '%s:%i' succeeded.\n", addressAndPort.first.c_str(), addressAndPort.second);
-  } else {
-    enet_peer_reset(peer);
-    printf("Connection to '%s:%i' failed.\n", addressAndPort.first.c_str(), addressAndPort.second);
-    return EXIT_SUCCESS;
-  }
-  enet_peer_timeout(peer, 100000, 0, 100000);
 
   // [...Game Loop...]
 
@@ -144,14 +151,15 @@ int main(int argc, char** argv) {
       isForceDisconnect = true;
     } else if (currentInput == "help" || currentInput == "h") {
       showHelp();
+      continue;
     } else if (currentInput == "leaderboard" || currentInput == "lb") {
-      sendPackageToServer(peer, "lb", currentPacket);
+      sendPackageToServer(peer, currentPacket, "lb");
     } else if (currentInput.rfind("setusername:", 0) == 0) {
       username = currentInput.substr(12, currentInput.size());
-      sendPackageToServer(peer, currentInput, currentPacket);
+      sendPackageToServer(peer, currentPacket, currentInput);
     } else if (isOnlyDigits(currentInput) && currentInput.size() > 0) {
       // guessing number
-      sendPackageToServer(peer, "n:" + currentInput, currentPacket);
+      sendPackageToServer(peer, currentPacket, "n:" + currentInput);
     } else {
       printf("Incorrect command. Print 'help' for more info.\n");
       continue;
@@ -170,27 +178,9 @@ int main(int argc, char** argv) {
     } else {
       printf("connection lost ...\n");
       // add new connection
-      client = enet_host_create(NULL	/* the address to bind the server host to */,
-                                1	/* allow up to 32 clients and/or outgoing connections */,
-                                1	/* allow up to 1 channel to be used, 0. */,
-                                0	/* assume any amount of incoming bandwidth */,
-                                0	/* assume any amount of outgoing bandwidth */);
-      if (client == NULL) {
-        fprintf(stderr, "An error occurred while trying to create an ENet client host.\n");
-        exit (EXIT_FAILURE);
-      }
-      peer = enet_host_connect(client, &address, 1, 0);
-      if (peer == NULL) {
-        fprintf(stderr, "No available peers for initiating an ENet connection!\n");
-        return EXIT_FAILURE;
-      }
-      if (enet_host_service(client, &event, 2000) > 0 && event.type == ENET_EVENT_TYPE_CONNECT) {
-        printf("Connection to '%s:%i' succeeded.\n", addressAndPort.first.c_str(), addressAndPort.second);
-      } else {
-        enet_peer_reset(peer);
-        printf("Connection to '%s:%i' failed.\n", addressAndPort.first.c_str(), addressAndPort.second);
-        return EXIT_SUCCESS;
-      }
+      std::pair<ENetHost*, ENetPeer*> clientPeer = connectToServer(addressAndPort);
+      client = clientPeer.first;
+      peer = clientPeer.second;
       // update username in new connection
       setUsername(peer, "setusername:" + username, currentPacket);
       if (enet_host_service(client, &event, 1000) > 0 && event.type == ENET_EVENT_TYPE_RECEIVE) {
