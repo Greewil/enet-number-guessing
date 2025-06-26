@@ -10,7 +10,7 @@ jobs:
 #    name: Deploy modules
 #    uses: ./.github/workflows/deploy.yml
 #    with:
-#      VUH_VERSION: 'v2.12.0'
+#      VUH_VERSION: 'v2.12.2'
 #    secrets:
 ##      maybe to S3 or store in github artifacts will see
 #      CONTAINER_REGISTRY_AUTH_TOKEN: ${{ secrets.CONTAINER_REGISTRY_AUTH_TOKEN }}
@@ -20,14 +20,14 @@ jobs:
 #    name: Run e2e tests (on unstable staging)
 #    uses: ./.github/workflows/run-e2e-tests.yml
 #    with:
-#      VUH_VERSION: 'v2.12.0'
+#      VUH_VERSION: 'v2.12.2'
 #    needs: [deploy]
 
   release-notes-generation:
     name: Release generation
     uses: ./.github/workflows/release-notes-generation.yml
     with:
-      VUH_VERSION: 'v2.12.0'
+      VUH_VERSION: 'v2.12.2'
       CHANGELOG_GENERATOR_VERSION: 'v1.0.3'
 #    needs: [deploy]
 #    needs: [run-e2e-tests]
