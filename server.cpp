@@ -8,7 +8,7 @@
 
 
 
-#define SERVER_VERSION "0.1.2"
+#define SERVER_VERSION "1.0.0"
 
 
 
@@ -22,22 +22,42 @@ std::string convertUnetDataToString(enet_uint8 * data) {
   return str;
 }
 
-std::string getLeaderboard(std::map<std::string, std::string> & mapSockerName,
-                           const std::map<std::string, std::pair<int, int>> & mapNameStats) {
-  std::string leaderboard = "";
-  // vector of averageDifferenses for connected players
-  std::vector<std::pair<std::string, double>> averageDifferenses;
-
-  for (auto itr = mapNameStats.begin(); itr != mapNameStats.end(); ++itr) {
-    // TODO select only namef from mapSockerName
-    // name itr->first 
-    // pair<int, int> stats it->second.first
-  }
-  //TODO sort vec
-  // append all elements to leaderboard
+double getAverageDifference(const std::pair<int, int> & attemptsAndTotalDifference) {
+  return 1.0 * attemptsAndTotalDifference.second / attemptsAndTotalDifference.first;
 }
 
-void sendResponse(ENetPeer* peer, const std::string & responseData, ENetPacket * packet) {
+std::string getLeaderboard(std::map<std::string, std::string> & mapSockerName,
+                           const std::map<std::string, std::pair<int, int>> & mapNameStats) {
+  std::string leaderboard = "\n";
+  // vector of averageDifferenses for connected players
+  std::vector<std::pair<std::string, double>> averageDifferenses;
+  bool isUsernameConnected = false;
+
+  for (auto itrNameStats = mapNameStats.begin(); itrNameStats != mapNameStats.end(); ++itrNameStats) {
+    // search username in connected users
+    isUsernameConnected = false;
+    for (auto itrSocketName = mapSockerName.begin(); itrSocketName != mapSockerName.end(); ++itrSocketName) {
+      if (itrSocketName->second == itrNameStats->first) {
+        isUsernameConnected = true;
+      }
+    }
+    // check username connected and already played some games
+    if (isUsernameConnected && itrNameStats->second.first != NULL) {
+      averageDifferenses.push_back({ itrNameStats->first, getAverageDifference(itrNameStats->second) });
+    }
+  }
+  std::sort(averageDifferenses.begin(), 
+            averageDifferenses.end(), 
+            [](std::pair<std::string, double> a, std::pair<std::string, double> b) { return a.second < b.second; });
+  int i=0;
+  for (auto itr = averageDifferenses.begin(); itr != averageDifferenses.end(); ++itr) {
+    leaderboard += std::to_string(i + 1) + ") " + itr->first + ": " + std::to_string(itr->second) + "\n";
+    i++;
+  }
+  return leaderboard;
+}
+
+void sendResponse(ENetPeer * peer, const std::string & responseData, ENetPacket * packet) {
   packet = enet_packet_create(responseData.c_str(),
                               responseData.size() + 1,
                               ENET_PACKET_FLAG_RELIABLE);
@@ -46,7 +66,7 @@ void sendResponse(ENetPeer* peer, const std::string & responseData, ENetPacket *
 
 
 
-int main (int argc, char** argv) {
+int main (int argc, char ** argv) {
   std::srand(std::time({}));
 
   if (enet_initialize() != 0) {
@@ -63,7 +83,6 @@ int main (int argc, char** argv) {
   }
 
   printf("Starting server (version %s)\n", SERVER_VERSION);
-  // TODO check versions compatable while clients connecting to server
 
   ENetEvent event;
   ENetAddress address;
@@ -124,39 +143,40 @@ int main (int argc, char** argv) {
                  event.peer->address.host,
                  event.peer->address.port,
                  event.channelID);
-          // TODO store number of guesses and deviation summ for each user
-          // store it in map using sockets as keys: "event.peer->address.host : event.peer->address.port"
-          // TODO count average deviation for current user using event.packet
-          /* Clean up the packet now that we're done using it. */
           currentInput = convertUnetDataToString(event.packet->data);
           response = "-\n";
           if (currentInput == "lb") {
             response = "Leaderboard:\n";
-            response += "TODO print leaderboard\n";
+            response += getLeaderboard(mapSockerName, mapNameStats);
+          } else if (currentInput == "version") {
+            response = SERVER_VERSION;
           } else if (currentInput.rfind("setusername:", 0) == 0) {
             std::string newUsername = currentInput.substr(12, currentInput.size());
-            mapNameStats[newUsername] = mapNameStats[mapSockerName[currentUserSocket]];
+            if (mapNameStats.find(mapSockerName[currentUserSocket]) == mapNameStats.end()) {
+              mapNameStats[newUsername] = mapNameStats[mapSockerName[currentUserSocket]];
+            }
             mapNameStats.erase(mapSockerName[currentUserSocket]);
             mapSockerName[currentUserSocket] = newUsername;
             response = "New username: " + newUsername + "\n";
           } else if (currentInput.rfind("n:", 0) == 0) {
+            guessedNumber = rand() % 101;  // [0, 100]
             currentUserNumber = std::stoi(currentInput.substr(2, currentInput.size()));
             currentUserDifference = std::abs(guessedNumber - currentUserNumber);
             mapNameStats[mapSockerName[currentUserSocket]].first += 1;
             mapNameStats[mapSockerName[currentUserSocket]].second += currentUserDifference;
-            guessedNumber = rand() % (101);  // [0, 100]
             response = "Guessed number was: " + std::to_string(guessedNumber) + "\n";
             response += "Your difference: " + std::to_string(currentUserDifference) + "\n";
-            response += "Average difference: " + std::to_string(1.0 * mapNameStats[mapSockerName[currentUserSocket]].second / mapNameStats[mapSockerName[currentUserSocket]].first) + "\n";
+            response += "Average difference: " + std::to_string(getAverageDifference(mapNameStats[mapSockerName[currentUserSocket]])) + "\n";
           } else {
             response = "Bad request.\n";
           }
+          /* Clean up the packet now that we're done using it. */
           enet_packet_destroy(event.packet);
           sendResponse(event.peer, response, responsePacket);
           break;
         case ENET_EVENT_TYPE_DISCONNECT:
-          // TODO remove user from socketName map
-          printf("%s disconnected.\n", event.peer->data);
+          printf("%s disconnected.\n", mapSockerName[currentUserSocket].c_str());
+          mapSockerName.erase(currentUserSocket);
           /* Reset the peer's client information. */
           event.peer->data = NULL;
           break;
